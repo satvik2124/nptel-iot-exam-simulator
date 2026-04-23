@@ -1304,7 +1304,7 @@ function parseQuestionsFromText(text) {
   let questionBlocks = [];
   
   // Pattern 1: Find numbered questions like "Q1.", "Q1)", "Question 1.", "1.", "1)"
-  const qPattern1 = /(?:\bQ\s*\.?\s*\d+|Question\s*\d+|\b\d+[\.\)])\s*)/gi;
+  const qPattern1 = /(?:\bQ\.?\s*\d+|Question\s*\d+|\b\d+[\.)])\s*/gi;
   questionBlocks = text.split(qPattern1).filter(b => b.trim().length > 20);
   
   // If no questions found, try splitting by option patterns A. B. C. D.
