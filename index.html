@@ -1,121 +1,662 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NPTEL IoT Exam Simulator</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.17.105/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Optional OCR (Tesseract.js) fallback -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
-  <style>
-    /* Basic reset for demo – keep inline for simplicity */
-    html, body { height: 100%; }
-    body { font-family: Arial, sans-serif; background:#0f1220; color:#e9e9e9; margin:0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPTEL IoT Exam Simulator | Smart Practice Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">NPTEL IoT Exam Simulator</div>
-    <nav class="topnav" aria-label="Main">
-      <button data-tab="import">Import</button>
-      <button data-tab="exam">Exam</button>
-      <button data-tab="dashboard">Dashboard</button>
-      <button data-tab="study">Study</button>
-    </nav>
-  </header>
-  <main class="container">
-    <!-- Import Panel -->
-    <section id="import" class="panel" data-active="true">
-      <h2>Question Import System</h2>
-      <div class="import-grid">
-        <div class="import-actions">
-          <label class="file-label">
-            Upload PDF (weekly assignments)
-            <input type="file" id="pdfInput" accept="application/pdf" />
-          </label>
-          <label class="file-label">
-            Upload Word (.docx)
-            <input type="file" id="wordInput" accept=".docx" />
-          </label>
-          <button id="demoParse" class="btn">Demo Parse (sample)</button>
-          <button id="exportTemplate" class="btn secondary">Export template JSON</button>
-          <button id="saveImported" class="btn success" disabled>Save Imported Questions</button>
+
+<!-- LOADING SCREEN -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="loader-content">
+    <div class="loader-logo">
+      <span class="logo-icon">⚡</span>
+      <span>IoT<strong>Prep</strong></span>
+    </div>
+    <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+    <p id="loadingMsg">Loading question bank...</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="app hidden">
+
+  <!-- SIDEBAR NAV -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">IoT<strong>Prep</strong></span>
+      <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+    </div>
+    <div class="nav-section">
+      <p class="nav-label">MAIN</p>
+      <button class="nav-btn active" data-view="dashboard" onclick="showView('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-btn" data-view="exam" onclick="showView('exam')">
+        <span class="nav-icon">🎯</span> Exam Mode
+      </button>
+      <button class="nav-btn" data-view="practice" onclick="showView('practice')">
+        <span class="nav-icon">📚</span> Practice Mode
+      </button>
+      <button class="nav-btn" data-view="study" onclick="showView('study')">
+        <span class="nav-icon">💡</span> Study Mode
+      </button>
+    </div>
+    <div class="nav-section">
+      <p class="nav-label">ANALYTICS</p>
+      <button class="nav-btn" data-view="mistakes" onclick="showView('mistakes')">
+        <span class="nav-icon">🔴</span> Mistake Tracker
+      </button>
+      <button class="nav-btn" data-view="progress" onclick="showView('progress')">
+        <span class="nav-icon">📈</span> Progress
+      </button>
+      <button class="nav-btn" data-view="bookmarks" onclick="showView('bookmarks')">
+        <span class="nav-icon">🔖</span> Bookmarks
+      </button>
+    </div>
+    <div class="nav-section">
+      <p class="nav-label">TOOLS</p>
+      <button class="nav-btn" data-view="import" onclick="showView('import')">
+        <span class="nav-icon">📥</span> Import Questions
+      </button>
+      <button class="nav-btn" onclick="exportResults()">
+        <span class="nav-icon">📤</span> Export Results
+      </button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="question-count">
+        <span id="totalQCount">0</span> Questions Loaded
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+        <div class="user-badge">NPTEL IoT</div>
+      </div>
+    </header>
+
+    <!-- VIEWS CONTAINER -->
+    <div class="views-container">
+
+      <!-- ==================== DASHBOARD VIEW ==================== -->
+      <div class="view active" id="view-dashboard">
+        <div class="view-header">
+          <h1>Welcome Back! 👋</h1>
+          <p>Track your NPTEL IoT exam preparation progress</p>
         </div>
-        <div class="import-preview" id="importPreview">
-          <h3>Preview Imported Questions</h3>
+
+        <div class="stats-grid">
+          <div class="stat-card" style="--card-color: #6366f1">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-info">
+              <span class="stat-value" id="statAttempts">0</span>
+              <span class="stat-label">Tests Taken</span>
+            </div>
+          </div>
+          <div class="stat-card" style="--card-color: #10b981">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-info">
+              <span class="stat-value" id="statHighScore">0%</span>
+              <span class="stat-label">Highest Score</span>
+            </div>
+          </div>
+          <div class="stat-card" style="--card-color: #f59e0b">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+              <span class="stat-value" id="statAvgScore">0%</span>
+              <span class="stat-label">Average Score</span>
+            </div>
+          </div>
+          <div class="stat-card" style="--card-color: #ef4444">
+            <div class="stat-icon">🔴</div>
+            <div class="stat-info">
+              <span class="stat-value" id="statWeakQ">0</span>
+              <span class="stat-label">Weak Questions</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dash-card">
+            <h3>Score History</h3>
+            <canvas id="scoreHistoryChart" height="200"></canvas>
+          </div>
+          <div class="dash-card">
+            <h3>Week-wise Performance</h3>
+            <canvas id="weekPerfChart" height="200"></canvas>
+          </div>
+          <div class="dash-card">
+            <h3>Quick Actions</h3>
+            <div class="quick-actions">
+              <button class="qa-btn" onclick="startExam('full')">
+                <span>🎯</span>
+                <strong>Full Mock Exam</strong>
+                <small>All weeks · 40 questions</small>
+              </button>
+              <button class="qa-btn" onclick="showView('exam')">
+                <span>📋</span>
+                <strong>Week-wise Exam</strong>
+                <small>Choose a specific week</small>
+              </button>
+              <button class="qa-btn" onclick="startPracticeWeak()">
+                <span>🔴</span>
+                <strong>Practice Weak Questions</strong>
+                <small>Focus on mistakes</small>
+              </button>
+              <button class="qa-btn" onclick="showView('study')">
+                <span>💡</span>
+                <strong>Study Mode</strong>
+                <small>Learn with explanations</small>
+              </button>
+            </div>
+          </div>
+          <div class="dash-card">
+            <h3>Recent Attempts</h3>
+            <div id="recentAttempts" class="recent-list">
+              <div class="empty-state">No attempts yet. Start your first exam!</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week performance table -->
+        <div class="dash-card full-width">
+          <h3>Topic Performance</h3>
+          <div id="topicTable" class="topic-table-container">
+            <div class="empty-state">Complete some tests to see topic performance</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== EXAM CONFIG VIEW ==================== -->
+      <div class="view" id="view-exam">
+        <div class="view-header">
+          <h1>🎯 Exam Configuration</h1>
+          <p>Configure your exam settings</p>
+        </div>
+        <div class="exam-config-grid">
+          <div class="config-card">
+            <h3>Exam Mode</h3>
+            <div class="radio-group">
+              <label class="radio-opt">
+                <input type="radio" name="examMode" value="full" checked> Full Mock Exam (All Weeks)
+              </label>
+              <label class="radio-opt">
+                <input type="radio" name="examMode" value="week"> Week-Wise Exam
+              </label>
+              <label class="radio-opt">
+                <input type="radio" name="examMode" value="random"> Random Mixed Mock
+              </label>
+              <label class="radio-opt">
+                <input type="radio" name="examMode" value="weak"> Weak Questions Only
+              </label>
+            </div>
+          </div>
+
+          <div class="config-card">
+            <h3>Week Selection</h3>
+            <div id="weekSelector" class="week-selector">
+              <!-- filled by JS -->
+            </div>
+          </div>
+
+          <div class="config-card">
+            <h3>Exam Settings</h3>
+            <div class="setting-row">
+              <label>Number of Questions:</label>
+              <input type="number" id="numQuestions" value="20" min="5" max="120" class="setting-input">
+            </div>
+            <div class="setting-row">
+              <label>Time Limit (minutes):</label>
+              <input type="number" id="timeLimit" value="30" min="5" max="180" class="setting-input">
+            </div>
+            <div class="setting-row">
+              <label>Shuffle Questions:</label>
+              <input type="checkbox" id="shuffleQ" checked class="setting-check">
+            </div>
+            <div class="setting-row">
+              <label>Shuffle Options:</label>
+              <input type="checkbox" id="shuffleOpts" checked class="setting-check">
+            </div>
+          </div>
+
+          <div class="config-card">
+            <h3>Scoring</h3>
+            <div class="setting-row">
+              <label>Marks per correct answer:</label>
+              <input type="number" id="marksCorrect" value="1" min="1" class="setting-input">
+            </div>
+            <div class="setting-row">
+              <label>Negative marking:</label>
+              <input type="number" id="marksNeg" value="0" min="0" step="0.25" class="setting-input">
+            </div>
+          </div>
+        </div>
+
+        <div class="exam-start-area">
+          <div id="examInfo" class="exam-info-box"></div>
+          <button class="btn-primary big" onclick="prepareExam()">Start Exam →</button>
+        </div>
+      </div>
+
+      <!-- ==================== EXAM PORTAL VIEW ==================== -->
+      <div class="view" id="view-portal">
+        <!-- EXAM PORTAL - Full screen exam interface -->
+        <div class="exam-portal">
+          <div class="exam-header">
+            <div class="exam-info-top">
+              <span id="examModeBadge" class="mode-badge">MOCK EXAM</span>
+              <span id="examQCounter">Question 1 of 20</span>
+            </div>
+            <div class="exam-timer" id="examTimer">
+              <span class="timer-icon">⏱</span>
+              <span id="timerDisplay">30:00</span>
+            </div>
+            <div class="exam-top-actions">
+              <button class="btn-sm" onclick="submitExam(true)">Submit Exam</button>
+            </div>
+          </div>
+
+          <div class="exam-body">
+            <div class="question-area">
+              <div class="q-meta">
+                <span class="q-badge" id="qTypeBadge">MCQ</span>
+                <span class="q-week" id="qWeekBadge">Week 1</span>
+                <span class="q-topic" id="qTopicBadge"></span>
+              </div>
+              <div class="q-number">Q<span id="qNumber">1</span></div>
+              <div class="q-text" id="qText">Question text loads here...</div>
+              <div class="q-msq-hint hidden" id="msqHint">⚠️ Multiple answers may be correct — select all that apply</div>
+              <div class="options-list" id="optionsList"><!-- options render here --></div>
+              <div class="q-nav-row">
+                <button class="btn-outline" id="btnPrev" onclick="navQuestion(-1)" disabled>← Previous</button>
+                <div class="q-actions">
+                  <button class="btn-review" id="btnReview" onclick="toggleReview()">🚩 Mark for Review</button>
+                  <button class="btn-clear" onclick="clearAnswer()">Clear</button>
+                </div>
+                <button class="btn-outline" id="btnNext" onclick="navQuestion(1)">Next →</button>
+              </div>
+            </div>
+
+            <div class="question-palette-panel">
+              <div class="palette-header">Question Palette</div>
+              <div class="palette-legend">
+                <span class="leg-item"><span class="leg-dot answered"></span>Answered</span>
+                <span class="leg-item"><span class="leg-dot unanswered"></span>Not Answered</span>
+                <span class="leg-item"><span class="leg-dot review"></span>Review</span>
+                <span class="leg-item"><span class="leg-dot current"></span>Current</span>
+              </div>
+              <div class="palette-grid" id="paletteGrid"><!-- filled by JS --></div>
+              <div class="palette-summary" id="paletteSummary"></div>
+              <button class="btn-submit-exam" onclick="submitExam(true)">Submit Exam</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== RESULT VIEW ==================== -->
+      <div class="view" id="view-result">
+        <div class="result-container">
+          <div class="result-hero">
+            <div class="result-score-ring">
+              <svg viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="85" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="12"/>
+                <circle cx="100" cy="100" r="85" fill="none" stroke="url(#scoreGrad)" stroke-width="12"
+                  stroke-linecap="round" stroke-dasharray="534" id="scoreRing" stroke-dashoffset="534"
+                  transform="rotate(-90 100 100)"/>
+                <defs>
+                  <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#6366f1"/>
+                    <stop offset="100%" stop-color="#10b981"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="score-text">
+                <span class="score-pct" id="resultPct">0%</span>
+                <span class="score-label">Score</span>
+              </div>
+            </div>
+            <div class="result-info">
+              <h1 id="resultTitle">Exam Complete!</h1>
+              <div class="result-stats">
+                <div class="rs"><span id="rCorrect">0</span><small>Correct</small></div>
+                <div class="rs"><span id="rWrong">0</span><small>Wrong</small></div>
+                <div class="rs"><span id="rSkipped">0</span><small>Skipped</small></div>
+                <div class="rs"><span id="rMarks">0</span><small>Marks</small></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-tabs">
+            <button class="rtab active" onclick="showResultTab('review')">Question Review</button>
+            <button class="rtab" onclick="showResultTab('topic')">Topic Analysis</button>
+            <button class="rtab" onclick="showResultTab('chart')">Performance Chart</button>
+          </div>
+
+          <div class="result-tab-content" id="rtab-review"><!-- filled by JS --></div>
+          <div class="result-tab-content hidden" id="rtab-topic"></div>
+          <div class="result-tab-content hidden" id="rtab-chart">
+            <canvas id="resultChart" height="300"></canvas>
+          </div>
+
+          <div class="result-actions">
+            <button class="btn-outline" onclick="showView('dashboard')">← Dashboard</button>
+            <button class="btn-primary" onclick="showView('exam')">New Exam</button>
+            <button class="btn-outline" onclick="retryWrong()">Retry Wrong Questions</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PRACTICE VIEW ==================== -->
+      <div class="view" id="view-practice">
+        <div class="view-header">
+          <h1>📚 Practice Mode</h1>
+          <p>Practice questions at your own pace</p>
+        </div>
+        <div class="practice-config">
+          <div class="practice-modes">
+            <button class="pm-card active" data-mode="all" onclick="setPracticeMode('all', this)">
+              <span>📚</span><strong>All Questions</strong><small>Practice every question</small>
+            </button>
+            <button class="pm-card" data-mode="wrong" onclick="setPracticeMode('wrong', this)">
+              <span>🔴</span><strong>Wrong Questions</strong><small>Your mistake bank</small>
+            </button>
+            <button class="pm-card" data-mode="weak" onclick="setPracticeMode('weak', this)">
+              <span>⚠️</span><strong>Weak Questions</strong><small>Low accuracy questions</small>
+            </button>
+            <button class="pm-card" data-mode="bookmarks" onclick="setPracticeMode('bookmarks', this)">
+              <span>🔖</span><strong>Bookmarked</strong><small>Your saved questions</small>
+            </button>
+            <button class="pm-card" data-mode="spaced" onclick="setPracticeMode('spaced', this)">
+              <span>🧠</span><strong>Spaced Repetition</strong><small>Smart review schedule</small>
+            </button>
+          </div>
+          <div class="practice-filters">
+            <select id="practiceWeekFilter" class="filter-select">
+              <option value="all">All Weeks</option>
+            </select>
+            <button class="btn-primary" onclick="startPractice()">Start Practice →</button>
+          </div>
+        </div>
+
+        <!-- PRACTICE PLAYER -->
+        <div class="practice-player hidden" id="practicePlayer">
+          <div class="practice-progress-bar">
+            <div class="ppb-fill" id="ppbFill" style="width:0%"></div>
+          </div>
+          <div class="practice-top">
+            <span id="practiceCounter">1 / 20</span>
+            <div class="practice-actions-top">
+              <button onclick="toggleBookmark()" id="btnBookmark" class="btn-icon" title="Bookmark">🔖</button>
+              <button onclick="exitPractice()" class="btn-icon" title="Exit">✕</button>
+            </div>
+          </div>
+          <div class="practice-q-area">
+            <div class="q-meta">
+              <span class="q-badge" id="pqTypeBadge">MCQ</span>
+              <span class="q-week" id="pqWeekBadge">Week 1</span>
+              <span class="q-topic" id="pqTopicBadge"></span>
+            </div>
+            <div class="q-text" id="pqText"></div>
+            <div class="q-msq-hint hidden" id="pMsqHint">⚠️ Select all correct answers</div>
+            <div class="options-list" id="pOptionsList"></div>
+            <div class="practice-check-row hidden" id="pCheckRow">
+              <button class="btn-primary" onclick="checkAnswer()">Check Answer</button>
+            </div>
+            <div class="practice-explanation hidden" id="pExplanation">
+              <div class="exp-header">
+                <span id="pResultBadge" class="result-badge">✓ Correct!</span>
+                <div class="exp-actions">
+                  <button class="btn-sm" onclick="addNote()">📝 Note</button>
+                </div>
+              </div>
+              <div class="exp-text" id="pExpText"></div>
+              <div class="note-area hidden" id="pNoteArea">
+                <textarea id="pNoteInput" placeholder="Add your note here..." rows="3"></textarea>
+                <button class="btn-sm" onclick="saveNote()">Save Note</button>
+              </div>
+              <div class="saved-note" id="pSavedNote"></div>
+            </div>
+          </div>
+          <div class="practice-nav">
+            <button class="btn-outline" id="pBtnPrev" onclick="practiceNav(-1)">← Prev</button>
+            <button class="btn-primary" id="pBtnNext" onclick="practiceNav(1)">Next →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== STUDY MODE VIEW ==================== -->
+      <div class="view" id="view-study">
+        <div class="view-header">
+          <h1>💡 Study Mode</h1>
+          <p>Learn concepts with explanations and flashcards</p>
+        </div>
+        <div class="study-modes">
+          <button class="study-mode-btn active" onclick="setStudyMode('topic', this)">Topic Revision</button>
+          <button class="study-mode-btn" onclick="setStudyMode('flashcard', this)">Flashcard Mode</button>
+          <button class="study-mode-btn" onclick="setStudyMode('quiz', this)">Quiz Mode</button>
+        </div>
+        <div class="study-week-select">
+          <p>Select Week / Topic:</p>
+          <div id="studyWeekGrid" class="study-week-grid"><!-- filled by JS --></div>
+        </div>
+        <div class="study-content" id="studyContent">
+          <div class="empty-state">Select a week to start studying</div>
+        </div>
+      </div>
+
+      <!-- ==================== MISTAKES VIEW ==================== -->
+      <div class="view" id="view-mistakes">
+        <div class="view-header">
+          <h1>🔴 Mistake Tracker</h1>
+          <p>Questions you consistently get wrong</p>
+        </div>
+        <div class="mistakes-summary" id="mistakesSummary"></div>
+        <div class="tabs">
+          <button class="tab active" onclick="showMistakeTab('frequent')">Most Frequent</button>
+          <button class="tab" onclick="showMistakeTab('recent')">Recent Mistakes</button>
+          <button class="tab" onclick="showMistakeTab('heatmap')">Concept Heatmap</button>
+        </div>
+        <div id="mistakes-frequent" class="mistake-list"></div>
+        <div id="mistakes-recent" class="mistake-list hidden"></div>
+        <div id="mistakes-heatmap" class="heatmap-container hidden"></div>
+      </div>
+
+      <!-- ==================== PROGRESS VIEW ==================== -->
+      <div class="view" id="view-progress">
+        <div class="view-header">
+          <h1>📈 Progress Analytics</h1>
+          <p>Your preparation journey at a glance</p>
+        </div>
+        <div class="progress-grid">
+          <div class="prog-card">
+            <h3>Score Trend</h3>
+            <canvas id="scoreTrendChart" height="250"></canvas>
+          </div>
+          <div class="prog-card">
+            <h3>Accuracy by Topic</h3>
+            <canvas id="topicAccChart" height="250"></canvas>
+          </div>
+          <div class="prog-card full-width">
+            <h3>Week-wise Accuracy Heatmap</h3>
+            <div id="accuracyHeatmap" class="accuracy-heatmap"></div>
+          </div>
+          <div class="prog-card">
+            <h3>Question Type Performance</h3>
+            <canvas id="qTypeChart" height="250"></canvas>
+          </div>
+          <div class="prog-card">
+            <h3>Study Streak</h3>
+            <div id="streakCalendar" class="streak-calendar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== BOOKMARKS VIEW ==================== -->
+      <div class="view" id="view-bookmarks">
+        <div class="view-header">
+          <h1>🔖 Bookmarked Questions</h1>
+          <p>Questions you've saved for later review</p>
+        </div>
+        <div class="bookmark-filters">
+          <select id="bmWeekFilter" class="filter-select" onchange="renderBookmarks()">
+            <option value="all">All Weeks</option>
+          </select>
+          <button class="btn-primary" onclick="practiceBookmarks()">Practice Bookmarks →</button>
+        </div>
+        <div id="bookmarkList" class="bookmark-list"></div>
+      </div>
+
+      <!-- ==================== IMPORT VIEW ==================== -->
+      <div class="view" id="view-import">
+        <div class="view-header">
+          <h1>📥 Import Questions</h1>
+          <p>Add questions from PDF, Word, or paste directly</p>
+        </div>
+
+        <div class="import-tabs">
+          <button class="itab active" onclick="showImportTab('pdf')">📄 PDF Upload</button>
+          <button class="itab" onclick="showImportTab('word')">📝 Word Upload</button>
+          <button class="itab" onclick="showImportTab('paste')">📋 Paste Text</button>
+          <button class="itab" onclick="showImportTab('manual')">✏️ Manual Add</button>
+        </div>
+
+        <!-- PDF Import -->
+        <div class="import-panel" id="itab-pdf">
+          <div class="drop-zone" id="pdfDropZone" onclick="document.getElementById('pdfFile').click()">
+            <div class="drop-icon">📄</div>
+            <p>Click or drag & drop your NPTEL PDF here</p>
+            <small>Supports text-based PDFs. All questions will be auto-extracted.</small>
+            <input type="file" id="pdfFile" accept=".pdf" hidden onchange="handlePDFUpload(event)">
+          </div>
+          <div class="import-progress hidden" id="pdfProgress">
+            <div class="prog-bar"><div class="prog-fill" id="pdfProgFill"></div></div>
+            <p id="pdfProgressMsg">Extracting text...</p>
+          </div>
+        </div>
+
+        <!-- Word Import -->
+        <div class="import-panel hidden" id="itab-word">
+          <div class="drop-zone" onclick="document.getElementById('wordFile').click()">
+            <div class="drop-icon">📝</div>
+            <p>Click to upload your Word document (.docx)</p>
+            <input type="file" id="wordFile" accept=".docx" hidden onchange="handleWordUpload(event)">
+          </div>
+        </div>
+
+        <!-- Paste Text Import -->
+        <div class="import-panel hidden" id="itab-paste">
+          <div class="paste-format-hint">
+            <strong>Format your questions like:</strong>
+            <pre>Week 1
+Q. What does IoT stand for?
+A. Internet of Thinking
+B. Internet of Things
+C. Intranet of Things
+D. Integrated Online Technology
+Correct: B
+Explanation: IoT stands for Internet of Things.</pre>
+          </div>
+          <textarea id="pasteInput" class="paste-area" placeholder="Paste your questions here in the format shown above..."></textarea>
+          <button class="btn-primary" onclick="parsePasteInput()">Parse Questions →</button>
+        </div>
+
+        <!-- Manual Add -->
+        <div class="import-panel hidden" id="itab-manual">
+          <div class="manual-form">
+            <div class="form-row">
+              <label>Week Number:</label>
+              <input type="number" id="mWeek" min="1" max="12" value="1" class="form-input">
+            </div>
+            <div class="form-row">
+              <label>Topic:</label>
+              <input type="text" id="mTopic" placeholder="e.g. IoT Protocols" class="form-input">
+            </div>
+            <div class="form-row">
+              <label>Question Type:</label>
+              <select id="mType" class="form-input">
+                <option value="MCQ">MCQ (Single correct)</option>
+                <option value="MSQ">MSQ (Multiple correct)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Question Text:</label>
+              <textarea id="mQuestion" rows="3" class="form-input" placeholder="Enter question..."></textarea>
+            </div>
+            <div id="mOptions">
+              <div class="form-row"><label>Option A:</label><input type="text" class="form-input opt-input" placeholder="Option A"></div>
+              <div class="form-row"><label>Option B:</label><input type="text" class="form-input opt-input" placeholder="Option B"></div>
+              <div class="form-row"><label>Option C:</label><input type="text" class="form-input opt-input" placeholder="Option C"></div>
+              <div class="form-row"><label>Option D:</label><input type="text" class="form-input opt-input" placeholder="Option D"></div>
+            </div>
+            <div class="form-row">
+              <label>Correct Answer(s):</label>
+              <input type="text" id="mCorrect" class="form-input" placeholder="e.g. A or A,C for MSQ">
+            </div>
+            <div class="form-row">
+              <label>Explanation:</label>
+              <textarea id="mExplanation" rows="3" class="form-input" placeholder="Explanation for the answer..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="addManualQuestion()">Add Question</button>
+          </div>
+        </div>
+
+        <!-- PREVIEW AREA -->
+        <div class="import-preview hidden" id="importPreview">
+          <div class="preview-header">
+            <h3>Preview Imported Questions (<span id="previewCount">0</span>)</h3>
+            <div class="preview-actions">
+              <button class="btn-outline" onclick="closePreview()">Cancel</button>
+              <button class="btn-primary" onclick="saveImportedQuestions()">Save All Questions</button>
+            </div>
+          </div>
           <div id="previewList" class="preview-list"></div>
         </div>
       </div>
-    </section>
 
-    <!-- Exam Panel -->
-    <section id="exam" class="panel" hidden>
-      <h2>Exam Simulator</h2>
-      <div class="exam-toolbar">
-        <button id="startMock" class="btn primary">Start Mock Exam</button>
-        <select id="modeSelect" aria-label="Mode">
-          <option value="full">Full Mock</option>
-          <option value="week">Week-wise</option>
-          <option value="mixed">Mixed Random</option>
-        </select>
-        <span class="timer" id="timerDisplay">00:00:00</span>
-      </div>
-      <div class="exam-area" id="examArea">
-        <!-- Question Card -->
-        <div class="card" id="questionCard">
-          <div class="q-meta">
-            <span id="qCounter">Q1</span>
-            <span id="qWeek" class="tag"></span>
-            <button id="markForReview" class="btn small">Mark for Review</button>
-          </div>
-          <div id="questionText" class="question-text"></div>
-          <div id="options" class="options"></div>
-          <div class="study-actions">
-            <button id="prevBtn" class="btn">Previous</button>
-            <button id="nextBtn" class="btn">Next</button>
-            <button id="clearAnswer" class="btn secondary">Clear Answer</button>
-            <button id="submitExam" class="btn success">Submit Exam</button>
-          </div>
-        </div>
-        <div class="palette" id="palette">
-          <!-- dynamic palette -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Dashboard Panel -->
-    <section id="dashboard" class="panel" hidden>
-      <h2>Dashboard & Analytics</h2>
-      <div class="grid">
-        <canvas id="progressChart" height="120"></canvas>
-        <canvas id="weekChart" height="120"></canvas>
-      </div>
-      <div class="stat-grid">
-        <div class="stat" id="statTotal"><strong>Total Attempts:</strong> 0</div>
-        <div class="stat" id="statHigh"><strong>Highest Score:</strong> 0%</div>
-        <div class="stat" id="statAvg"><strong>Average Score:</strong> 0%</div>
-      </div>
-    </section>
-
-    <!-- Study Panel -->
-    <section id="study" class="panel" hidden>
-      <h2>Study Mode</h2>
-      <div class="study-controls">
-        <button id="startStudy" class="btn primary">Start Study Session</button>
-        <button id="toggleFlashcards" class="btn">Toggle Flashcards</button>
-      </div>
-      <div id="studyArea" class="study-area" hidden>
-        <div id="studyQuestion" class="study-question"></div>
-        <div id="studyExplanation" class="study-explanation"></div>
-      </div>
-    </section>
+    </div> <!-- end views-container -->
   </main>
+</div> <!-- end app -->
 
-  <script src="script.js"></script>
+<!-- MODALS -->
+<div class="modal-overlay hidden" id="confirmSubmitModal">
+  <div class="modal">
+    <h3>Submit Exam?</h3>
+    <p id="submitWarning">You have unanswered questions. Are you sure you want to submit?</p>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal('confirmSubmitModal')">Continue Exam</button>
+      <button class="btn-primary" onclick="finalSubmit()">Submit Now</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="noteModal">
+  <div class="modal">
+    <h3>📝 Question Notes</h3>
+    <textarea id="noteModalInput" rows="5" placeholder="Write your notes here..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal('noteModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveModalNote()">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
 </body>
 </html>
