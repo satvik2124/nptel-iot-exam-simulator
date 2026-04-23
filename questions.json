@@ -1,0 +1,30 @@
+[
+  {
+    "id": "q_01",
+    "week": 1,
+    "text": "What is the unit of electrical resistance?",
+    "options": [
+      {"label": "A", "text": "Ohm"},
+      {"label": "B", "text": "Newton"},
+      {"label": "C", "text": "Hertz"},
+      {"label": "D", "text": "Joule"}
+    ],
+    "correct": [0],
+    "explanation": "The unit of resistance is the Ohm (Ω).",
+    "tags": ["week-1","electronics"]
+  },
+  {
+    "id": "q_02",
+    "week": 1,
+    "text": "Which protocol is commonly used for IoT devices in home automation?",
+    "options": [
+      {"label": "A", "text": "HTTP"},
+      {"label": "B", "text": "MQTT"},
+      {"label": "C", "text": "FTP"},
+      {"label": "D", "text": "SMTP"}
+    ],
+    "correct": [1],
+    "explanation": "MQTT is lightweight and designed for unreliable networks.",
+    "tags": ["week-1","iot"]
+  }
+]

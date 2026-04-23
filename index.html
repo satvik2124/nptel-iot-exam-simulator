@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPTEL IoT Exam Simulator</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.17.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Optional OCR (Tesseract.js) fallback -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <style>
+    /* Basic reset for demo – keep inline for simplicity */
+    html, body { height: 100%; }
+    body { font-family: Arial, sans-serif; background:#0f1220; color:#e9e9e9; margin:0; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">NPTEL IoT Exam Simulator</div>
+    <nav class="topnav" aria-label="Main">
+      <button data-tab="import">Import</button>
+      <button data-tab="exam">Exam</button>
+      <button data-tab="dashboard">Dashboard</button>
+      <button data-tab="study">Study</button>
+    </nav>
+  </header>
+  <main class="container">
+    <!-- Import Panel -->
+    <section id="import" class="panel" data-active="true">
+      <h2>Question Import System</h2>
+      <div class="import-grid">
+        <div class="import-actions">
+          <label class="file-label">
+            Upload PDF (weekly assignments)
+            <input type="file" id="pdfInput" accept="application/pdf" />
+          </label>
+          <label class="file-label">
+            Upload Word (.docx)
+            <input type="file" id="wordInput" accept=".docx" />
+          </label>
+          <button id="demoParse" class="btn">Demo Parse (sample)</button>
+          <button id="exportTemplate" class="btn secondary">Export template JSON</button>
+          <button id="saveImported" class="btn success" disabled>Save Imported Questions</button>
+        </div>
+        <div class="import-preview" id="importPreview">
+          <h3>Preview Imported Questions</h3>
+          <div id="previewList" class="preview-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Exam Panel -->
+    <section id="exam" class="panel" hidden>
+      <h2>Exam Simulator</h2>
+      <div class="exam-toolbar">
+        <button id="startMock" class="btn primary">Start Mock Exam</button>
+        <select id="modeSelect" aria-label="Mode">
+          <option value="full">Full Mock</option>
+          <option value="week">Week-wise</option>
+          <option value="mixed">Mixed Random</option>
+        </select>
+        <span class="timer" id="timerDisplay">00:00:00</span>
+      </div>
+      <div class="exam-area" id="examArea">
+        <!-- Question Card -->
+        <div class="card" id="questionCard">
+          <div class="q-meta">
+            <span id="qCounter">Q1</span>
+            <span id="qWeek" class="tag"></span>
+            <button id="markForReview" class="btn small">Mark for Review</button>
+          </div>
+          <div id="questionText" class="question-text"></div>
+          <div id="options" class="options"></div>
+          <div class="study-actions">
+            <button id="prevBtn" class="btn">Previous</button>
+            <button id="nextBtn" class="btn">Next</button>
+            <button id="clearAnswer" class="btn secondary">Clear Answer</button>
+            <button id="submitExam" class="btn success">Submit Exam</button>
+          </div>
+        </div>
+        <div class="palette" id="palette">
+          <!-- dynamic palette -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Panel -->
+    <section id="dashboard" class="panel" hidden>
+      <h2>Dashboard & Analytics</h2>
+      <div class="grid">
+        <canvas id="progressChart" height="120"></canvas>
+        <canvas id="weekChart" height="120"></canvas>
+      </div>
+      <div class="stat-grid">
+        <div class="stat" id="statTotal"><strong>Total Attempts:</strong> 0</div>
+        <div class="stat" id="statHigh"><strong>Highest Score:</strong> 0%</div>
+        <div class="stat" id="statAvg"><strong>Average Score:</strong> 0%</div>
+      </div>
+    </section>
+
+    <!-- Study Panel -->
+    <section id="study" class="panel" hidden>
+      <h2>Study Mode</h2>
+      <div class="study-controls">
+        <button id="startStudy" class="btn primary">Start Study Session</button>
+        <button id="toggleFlashcards" class="btn">Toggle Flashcards</button>
+      </div>
+      <div id="studyArea" class="study-area" hidden>
+        <div id="studyQuestion" class="study-question"></div>
+        <div id="studyExplanation" class="study-explanation"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
