@@ -55,10 +55,24 @@ async function loadQuestions() {
   try {
     const r = await fetch('questions.json');
     const base = await r.json();
+    
+    // Normalize field names between questions.json and app format
+    const normalized = base.map(q => ({
+      id: q.id || `q_${Math.random().toString(36).substr(2, 9)}`,
+      week: q.week || 1,
+      topic: q.topic || q.tags?.[0] || `Week ${q.week || 1}`,
+      type: q.type || 'MCQ',
+      question: q.question || q.text || '',
+      options: q.options?.map(o => o.text || o) || [],
+      correct: q.correct?.map(c => typeof c === 'number' ? c : (c.label ? c.label.charCodeAt(0) - 65 : 0)) || [0],
+      explanation: q.explanation || ''
+    }));
+    
     const saved = (appData.customQuestions || []);
-    allQuestions = [...base, ...saved];
+    allQuestions = [...normalized, ...saved];
+    console.log('Loaded ' + allQuestions.length + ' questions');
   } catch(e) {
-    console.warn('Could not load questions.json, using empty bank');
+    console.warn('Could not load questions.json:', e);
     allQuestions = appData.customQuestions || [];
   }
 }
@@ -1277,76 +1291,189 @@ function parseQuestionsFromText(text) {
   const questions = [];
   let currentWeek = 1;
 
-  // Detect week
-  const weekMatch = text.match(/week\s*[:\-]?\s*(\d+)/i);
-  if (weekMatch) currentWeek = parseInt(weekMatch[1]);
-
-  // Split by question patterns: "Q." "Q1." "1." numbered questions
-  // Try multiple patterns
-  const patterns = [
-    /(?:^|\n)\s*(?:Q\.?\s*\d+|Question\s*\d+|\d+[\.\)]\s)/gim,
-    /(?:^|\n)\s*\d+\.\s+/gm
-  ];
-
-  // Normalize text
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+  // Clean and normalize text
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
+  // Detect all weeks in the document
+  const weekMatches = text.match(/week\s*[:\-]?\s*(\d+)/gi);
+  const weeksFound = [...new Set(weekMatches ? weekMatches.map(w => { const m = w.match(/\d+/); return m ? parseInt(m[0]) : 1; }) : [1])];
+  if (weeksFound.length > 0) currentWeek = Math.min(...weeksFound);
+
+  // Split by multiple possible question patterns
+  // Try to split by "Q1", "Q.", "Question 1", "1." etc.
+  let questionBlocks = [];
+  
+  // Pattern 1: Find numbered questions like "Q1.", "Q1)", "Question 1.", "1.", "1)"
+  const qPattern1 = /(?:\bQ\s*\.?\s*\d+|Question\s*\d+|\b\d+[\.\)])\s*)/gi;
+  questionBlocks = text.split(qPattern1).filter(b => b.trim().length > 20);
+  
+  // If no questions found, try splitting by option patterns A. B. C. D.
+  if (questionBlocks.length < 2) {
+    const optPattern = /\b[A-D][\.\)]\s+/gi;
+    let parts = text.split(optPattern);
+    // Re-group into question blocks
+    questionBlocks = [];
+    let currentBlock = '';
+    parts.forEach((part, idx) => {
+      if (idx % 5 === 0) { // Every 5 parts is roughly one question
+        if (currentBlock) questionBlocks.push(currentBlock);
+        currentBlock = part;
+      } else {
+        currentBlock += ' ' + part;
+      }
+    });
+    if (currentBlock) questionBlocks.push(currentBlock);
+  }
+
+  // Process each block
+  let qNum = 1;
+  questionBlocks.forEach(block => {
+    block = block.trim();
+    if (block.length < 30) return; // Skip too short blocks
     
-    // Detect week changes
-    const wm = line.match(/week\s*[:\-]?\s*(\d+)/i);
-    if (wm) { currentWeek = parseInt(wm[1]); i++; continue; }
+    // Try to extract question number for week detection
+    const weekMatch = block.match(/week\s*[:\-]?\s*(\d+)/i);
+    if (weekMatch) currentWeek = parseInt(weekMatch[1]);
 
-    // Question line detection
-    const qMatch = line.match(/^(?:Q\.?\s*\d+[\.\):]?\s*|Question\s*\d+[\.\):]?\s*|\d+[\.\)]\s+)(.+)/i);
-    if (!qMatch) { i++; continue; }
-
-    const qText = qMatch[1].trim();
-    if (qText.length < 10) { i++; continue; }
-
-    // Collect options
-    const opts = [];
-    let j = i + 1;
-    while (j < lines.length && opts.length < 4) {
-      const optMatch = lines[j].match(/^([A-D]|[a-d])[\.\)\s]\s*(.+)/);
-      if (optMatch) { opts.push(optMatch[2].trim()); j++; }
-      else if (opts.length > 0) break;
-      else j++;
+    // Remove question number prefix
+    const cleanBlock = block.replace(/^(?:Q\s*\.?\s*\d+|Question\s*\d+|\b\d+[\.\)])\s*)/i, '').trim();
+    
+    // Extract question text (everything before options)
+    let qText = cleanBlock;
+    let optLines = [];
+    
+    // Find option lines (starting with A. B. C. D.)
+    const optMatches = cleanBlock.match(/[A-D][\.\)]\s*[^\n]+/gi);
+    if (optMatches && optMatches.length >= 2) {
+      optLines = optMatches.map(o => o.replace(/^[A-D][\.\)]\s*/, '').trim());
+      // Get question text before first option
+      const firstOptIdx = cleanBlock.indexOf(optMatches[0]);
+      qText = cleanBlock.substring(0, firstOptIdx).trim();
+    } else {
+      // Try alternative: options on separate lines
+      const lines = cleanBlock.split('\n').filter(l => l.trim().length > 2);
+      const optStartIdx = lines.findIndex(l => /^[A-D][\.\)]/.test(l));
+      if (optStartIdx > 0) {
+        optLines = lines.slice(optStartIdx, optStartIdx + 4).map(l => l.replace(/^[A-D][\.\)]\s*/, '').trim());
+        qText = lines.slice(0, optStartIdx).join(' ').trim();
+      }
     }
 
-    if (opts.length < 2) { i++; continue; }
+    if (optLines.length < 2 || qText.length < 10) return;
 
-    // Correct answer
+    // Extract correct answer
     let correctIdx = [0];
     let explanation = '';
-    while (j < lines.length) {
-      const cl = lines[j].toLowerCase();
-      const ansMatch = lines[j].match(/(?:correct|answer|ans)[\s:]*([A-D,\s]+)/i);
-      if (ansMatch) {
-        const letters = ansMatch[1].toUpperCase().match(/[A-D]/g) || [];
-        correctIdx = letters.map(l => l.charCodeAt(0) - 65).filter(n => n < opts.length);
-        if (correctIdx.length === 0) correctIdx = [0];
-        j++;
-      } else if (cl.startsWith('explanation') || cl.startsWith('solution') || cl.startsWith('exp:')) {
-        explanation = lines[j].replace(/^(explanation|solution|exp)[:\s]*/i, '').trim();
-        j++;
-      } else {
+    
+    // Look for answer patterns in the whole original text area
+    const answerPatterns = [
+      /\b(?:correct|answer|ans|key)\s*[:]?\s*([A-D,\s]+)/gi,
+      /\b(?:answer|correct)\s+(?:is\b)?\s*([A-D])/gi,
+      /\(([A-D])\)\s*(?:is\s+(?:the\s+)?(?:correct\s+)?answer/gi
+    ];
+    
+    const blockLower = cleanBlock.toLowerCase();
+    for (const pattern of answerPatterns) {
+      const match = blockLower.match(pattern);
+      if (match) {
+        const letters = match[0].match(/[A-D]/g);
+        if (letters) {
+          correctIdx = letters.map(l => l.charCodeAt(0) - 65);
+          break;
+        }
+      }
+    }
+
+    // Try to find explanation
+    const expPatterns = [/\b(?:explanation|solution|exp)[:\s]*(.+)/gi, /\b(?:because|therefore|thus)[:\s]*(.+)/gi];
+    for (const pattern of expPatterns) {
+      const match = cleanBlock.match(pattern);
+      if (match && match[1]) {
+        explanation = match[1].substring(0, 200);
         break;
       }
     }
 
     const type = correctIdx.length > 1 ? 'MSQ' : 'MCQ';
     questions.push({
-      id: `import_${Date.now()}_${questions.length}`,
+      id: `import_${Date.now()}_${qNum++}`,
       week: currentWeek,
       topic: `Week ${currentWeek}`,
-      type, question: qText, options: opts,
-      correct: correctIdx, explanation
+      type: optLines.length > 2 && correctIdx.length > 1 ? 'MSQ' : 'MCQ',
+      question: qText.substring(0, 500),
+      options: optLines.slice(0, 4),
+      correct: correctIdx.filter(i => i >= 0 && i < optLines.length).length > 0 ? correctIdx.filter(i => i >= 0 && i < optLines.length) : [0],
+      explanation: explanation || ''
     });
+  });
 
-    i = j;
+  // If still no questions, try an even simpler approach
+  if (questions.length < 2) {
+    const lines = text.split('\n');
+    let i = 0;
+    let questionText = '';
+    let options = [];
+    let foundCorrect = false;
+    
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      
+      // Skip empty or very short lines
+      if (line.length < 3) { i++; continue; }
+      
+      // Check for week marker
+      const wm = line.match(/week\s*[:\-]?\s*(\d+)/i);
+      if (wm) { currentWeek = parseInt(wm[1]); }
+      
+      // Question detection (starts with number or Q)
+      if (line.match(/^(\d+[\.\)]|Q[\.\)]?\s*\d+)/i)) {
+        // Save previous question if exists
+        if (questionText && options.length >= 2) {
+          questions.push({
+            id: `import_${Date.now()}_${questions.length + 1}`,
+            week: currentWeek,
+            topic: `Week ${currentWeek}`,
+            type: 'MCQ',
+            question: questionText.substring(0, 500),
+            options: options.slice(0, 4),
+            correct: foundCorrect ? [0] : [0], // Default to first option
+            explanation: ''
+          });
+        }
+        // Start new question
+        questionText = line.replace(/^(\d+[\.\)]|Q[\.\)]?\s*\d+)\s*/, '');
+        options = [];
+        foundCorrect = false;
+      }
+      // Option detection
+      else if (line.match(/^[A-D][\.\)]/i) && options.length < 4) {
+        options.push(line.replace(/^[A-D][\.\)]\s*/, ''));
+      }
+      // Answer detection
+      else if (line.match(/^(?:answer|correct|ans)[:\s]*[A-D]/i)) {
+        const ans = line.match(/[A-D]/i);
+        if (ans) {
+          correctIdx = [ans[0].charCodeAt(0) - 65];
+          foundCorrect = true;
+        }
+      }
+      
+      i++;
+    }
+    
+    // Add last question
+    if (questionText && options.length >= 2) {
+      questions.push({
+        id: `import_${Date.now()}_${questions.length + 1}`,
+        week: currentWeek,
+        topic: `Week ${currentWeek}`,
+        type: 'MCQ',
+        question: questionText.substring(0, 500),
+        options: options.slice(0, 4),
+        correct: correctIdx || [0],
+        explanation: ''
+      });
+    }
   }
 
   return questions;
@@ -1398,21 +1525,32 @@ function closePreview() {
 }
 
 function saveImportedQuestions() {
-  if (pendingImport.length === 0) return;
+  if (pendingImport.length === 0) {
+    showToast('No questions to save', 'error');
+    return;
+  }
   
-  // Add to custom questions
+  // Add to custom questions in appData
   appData.customQuestions = appData.customQuestions || [];
-  appData.customQuestions.push(...pendingImport);
+  pendingImport.forEach(q => {
+    // Ensure each question has a unique ID
+    q.id = q.id || `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    appData.customQuestions.push(q);
+  });
+  
+  // Save to localStorage
   saveAppData();
   
-  // Reload all questions
+  // Also update allQuestions array
   allQuestions = [...allQuestions, ...pendingImport];
   updateQCount();
   buildWeekSelectors();
   
+  const importCount = pendingImport.length;
   document.getElementById('importPreview').classList.add('hidden');
   pendingImport = [];
-  showToast(`✅ ${pendingImport.length || appData.customQuestions.length} questions saved!`, 'success');
+  
+  showToast(`✅ ${importCount} questions imported! Total: ${allQuestions.length}`, 'success');
   showView('dashboard');
 }
 
@@ -1483,31 +1621,11 @@ function saveModalNote() {
   showToast('Note saved!', 'success');
 }
 
-// Event listeners
-document.querySelectorAll('input[name="examMode"]').forEach(r => {
-  r.addEventListener('change', updateExamInfo);
-});
-['numQuestions','timeLimit'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', updateExamInfo);
+// Force initialize on load
+window.addEventListener('DOMContentLoaded', () => {
+  // Initialize app immediately
+  init();
 });
 
-// PDF drop zone drag events
-document.addEventListener('DOMContentLoaded', () => {
-  const dz = document.getElementById('pdfDropZone');
-  if (dz) {
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--accent)'; });
-    dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; });
-    dz.addEventListener('drop', e => {
-      e.preventDefault(); dz.style.borderColor = '';
-      const file = e.dataTransfer.files[0];
-      if (file && file.type === 'application/pdf') {
-        document.getElementById('pdfFile').files = e.dataTransfer.files;
-        handlePDFUpload({ target: { files: e.dataTransfer.files } });
-      }
-    });
-  }
-});
-
-// Initialize
+// Also handle window load as backup
 window.addEventListener('load', init);

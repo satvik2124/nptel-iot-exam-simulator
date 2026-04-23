@@ -2,29 +2,101 @@
   {
     "id": "q_01",
     "week": 1,
-    "text": "What is the unit of electrical resistance?",
-    "options": [
-      {"label": "A", "text": "Ohm"},
-      {"label": "B", "text": "Newton"},
-      {"label": "C", "text": "Hertz"},
-      {"label": "D", "text": "Joule"}
-    ],
+    "topic": "IoT Basics",
+    "type": "MCQ",
+    "question": "What does IoT stand for?",
+    "options": ["Internet of Things", "Internet of Thinking", "Intranet of Things", "Integrated Online Technology"],
     "correct": [0],
-    "explanation": "The unit of resistance is the Ohm (Ω).",
-    "tags": ["week-1","electronics"]
+    "explanation": "IoT stands for Internet of Things, which refers to the network of physical devices embedded with sensors and software."
   },
   {
     "id": "q_02",
     "week": 1,
-    "text": "Which protocol is commonly used for IoT devices in home automation?",
-    "options": [
-      {"label": "A", "text": "HTTP"},
-      {"label": "B", "text": "MQTT"},
-      {"label": "C", "text": "FTP"},
-      {"label": "D", "text": "SMTP"}
-    ],
+    "topic": "IoT Protocols",
+    "type": "MCQ",
+    "question": "Which protocol is commonly used for IoT devices in home automation?",
+    "options": ["HTTP", "MQTT", "FTP", "SMTP"],
     "correct": [1],
-    "explanation": "MQTT is lightweight and designed for unreliable networks.",
-    "tags": ["week-1","iot"]
+    "explanation": "MQTT is lightweight and designed for unreliable networks, commonly used in IoT."
+  },
+  {
+    "id": "q_03",
+    "week": 1,
+    "topic": "IoT Architecture",
+    "type": "MCQ",
+    "question": "How many layers are there in the IoT architecture?",
+    "options": ["2", "3", "4", "5"],
+    "correct": [2],
+    "explanation": "IoT typically has 4 layers: Perception, Network, Processing, and Application."
+  },
+  {
+    "id": "q_04",
+    "week": 2,
+    "topic": "Sensors",
+    "type": "MCQ",
+    "question": "Which sensor is used to measure temperature?",
+    "options": ["Thermistor", "Phototransistor", "Accelerometer", "Gyroscope"],
+    "correct": [0],
+    "explanation": "A thermistor is a temperature-sensitive resistor used to measure temperature changes."
+  },
+  {
+    "id": "q_05",
+    "week": 2,
+    "topic": "Wireless Communication",
+    "type": "MCQ",
+    "question": "What is the maximum range of Wi-Fi?",
+    "options": ["10 meters", "25 meters", "50 meters", "100 meters"],
+    "correct": [2],
+    "explanation": "Wi-Fi typically has a range of about 50 meters indoors depending on the router."
+  },
+  {
+    "id": "q_06",
+    "week": 2,
+    "topic": "Cloud Computing",
+    "type": "MCQ",
+    "question": "Which cloud service model provides virtual machines?",
+    "options": ["IaaS", "PaaS", "SaaS", "Daas"],
+    "correct": [0],
+    "explanation": "Infrastructure as a Service (IaaS) provides virtual machines and storage."
+  },
+  {
+    "id": "q_07",
+    "week": 3,
+    "topic": "Arduino",
+    "type": "MCQ",
+    "question": "What is the operating voltage of Arduino Uno?",
+    "options": ["3.3V", "5V", "9V", "12V"],
+    "correct": [1],
+    "explanation": "Arduino Uno operates at 5V logic level."
+  },
+  {
+    "id": "q_08",
+    "week": 3,
+    "topic": "Raspberry Pi",
+    "type": "MCQ",
+    "question": "What is the default username for Raspberry Pi?",
+    "options": ["admin", "root", "pi", "user"],
+    "correct": [2],
+    "explanation": "The default username for Raspberry Pi is 'pi'."
+  },
+  {
+    "id": "q_09",
+    "week": 4,
+    "topic": "Data Analytics",
+    "type": "MCQ",
+    "question": "Which tool is used for data visualization?",
+    "options": ["Python", "Tableau", "Java", "C++"],
+    "correct": [1],
+    "explanation": "Tableau is a powerful data visualization tool."
+  },
+  {
+    "id": "q_10",
+    "week": 4,
+    "topic": "Machine Learning",
+    "type": "MCQ",
+    "question": "What type of learning uses labeled data?",
+    "options": ["Unsupervised", "Supervised", "Reinforcement", "Semi-supervised"],
+    "correct": [1],
+    "explanation": "Supervised learning uses labeled training data."
   }
 ]
