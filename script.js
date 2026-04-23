@@ -1309,7 +1309,7 @@ function parseQuestionsFromText(text) {
   
   // If no questions found, try splitting by option patterns A. B. C. D.
   if (questionBlocks.length < 2) {
-    const optPattern = /\b[A-D][\.\)]\s+/gi;
+    const optPattern = /\b[A-D][.)]\s+/gi;
     let parts = text.split(optPattern);
     // Re-group into question blocks
     questionBlocks = [];
@@ -1336,14 +1336,14 @@ function parseQuestionsFromText(text) {
     if (weekMatch) currentWeek = parseInt(weekMatch[1]);
 
     // Remove question number prefix
-    const cleanBlock = block.replace(/^(?:Q\s*\.?\s*\d+|Question\s*\d+|\b\d+[\.\)])\s*)/i, '').trim();
+    const cleanBlock = block.replace(/^(?:Q\.?\s*\d+|Question\s*\d+|\d+[.)])\s*/i, '').trim();
     
     // Extract question text (everything before options)
     let qText = cleanBlock;
     let optLines = [];
     
     // Find option lines (starting with A. B. C. D.)
-    const optMatches = cleanBlock.match(/[A-D][\.\)]\s*[^\n]+/gi);
+    const optMatches = cleanBlock.match(/[A-D][.)]\s+[^\n]+/gi);
     if (optMatches && optMatches.length >= 2) {
       optLines = optMatches.map(o => o.replace(/^[A-D][\.\)]\s*/, '').trim());
       // Get question text before first option
@@ -1368,8 +1368,7 @@ function parseQuestionsFromText(text) {
     // Look for answer patterns in the whole original text area
     const answerPatterns = [
       /\b(?:correct|answer|ans|key)\s*[:]?\s*([A-D,\s]+)/gi,
-      /\b(?:answer|correct)\s+(?:is\b)?\s*([A-D])/gi,
-      /\(([A-D])\)\s*(?:is\s+(?:the\s+)?(?:correct\s+)?answer/gi
+      /\b(?:answer|correct)\s+(?:is\b)?\s*([A-D])/gi
     ];
     
     const blockLower = cleanBlock.toLowerCase();
